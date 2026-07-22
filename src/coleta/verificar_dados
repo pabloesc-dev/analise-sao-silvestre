@@ -1,0 +1,132 @@
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+import time
+
+URL = "https://openresults.run/ajax_resultados_evento.cfm"
+
+EVENTOS = {
+    2022: 38
+    # Para testar 2023 depois, troque por:
+    # 2023: 2994
+}
+
+
+def coletar_resultados(ano, id_evento, genero):
+
+    dados_finais = []
+
+    offset = 0
+    limit = 100
+
+    while True:
+
+        params = {
+            "id_evento": id_evento,
+            "modalidade": "15k",
+            "genero": genero,
+            "categoria": "",
+            "equipe": "",
+            "termo": "",
+            "show_modalidade": 0,
+            "show_categoria": 0,
+            "offset": offset,
+            "limit": limit,
+            "busca": ""
+        }
+
+        try:
+
+            resposta = requests.get(URL, params=params, timeout=30)
+
+            print("\n===================================")
+            print(f"Ano: {ano}")
+            print(f"Gênero: {genero}")
+            print(f"Status HTTP: {resposta.status_code}")
+            print(f"URL utilizada:\n{resposta.url}")
+
+            if resposta.status_code != 200:
+                print("Erro HTTP!")
+                break
+
+            dados = resposta.json()
+
+            print("\nChaves retornadas pela API:")
+            print(dados.keys())
+
+            print("\nPrimeiros 500 caracteres do HTML:")
+            print(dados["html"][:500])
+
+        except Exception as e:
+
+            print("ERRO:")
+            print(e)
+            break
+
+        soup = BeautifulSoup(dados["html"], "html.parser")
+
+        linhas = soup.find_all("tr")
+
+        print(f"\nQuantidade de linhas encontradas: {len(linhas)}")
+
+        if len(linhas) == 0:
+            print("Nenhum resultado encontrado.")
+            break
+
+        for linha in linhas:
+
+            colunas = linha.find_all("td")
+
+            if len(colunas) >= 7:
+
+                dados_finais.append({
+                    "ano": ano,
+                    "colocacao": colunas[0].get_text(strip=True),
+                    "categoria": colunas[1].get_text(strip=True),
+                    "numero_peito": colunas[2].get_text(strip=True),
+                    "nome": colunas[3].get_text(strip=True),
+                    "equipe": colunas[4].get_text(strip=True),
+                    "pace": colunas[5].get_text(strip=True),
+                    "tempo": colunas[6].get_text(strip=True),
+                    "genero": genero
+                })
+
+        print(f"Registros acumulados: {len(dados_finais)}")
+
+        offset += limit
+
+        time.sleep(0.5)
+
+    return pd.DataFrame(dados_finais)
+
+
+# ==========================
+# TESTE
+# ==========================
+
+todos_os_dados = []
+
+for ano, id_evento in EVENTOS.items():
+
+    print(f"\n===== {ano} Masculino =====")
+
+    df_m = coletar_resultados(ano, id_evento, "M")
+
+    print(df_m.head())
+    print(df_m.shape)
+
+    print(f"\n===== {ano} Feminino =====")
+
+    df_f = coletar_resultados(ano, id_evento, "F")
+
+    print(df_f.head())
+    print(df_f.shape)
+
+    todos_os_dados.append(df_m)
+    todos_os_dados.append(df_f)
+
+df_final = pd.concat(todos_os_dados, ignore_index=True)
+
+print("\nResumo Final")
+print(df_final["ano"].value_counts())
+print(df_final.shape)
