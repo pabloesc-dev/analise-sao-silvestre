@@ -1,32 +1,28 @@
 import pandas as pd
 
-
-df_f = pd.read_csv(
-    "dados_brutos/sao_silvestre_2025_feminino.csv"
+historico = pd.read_csv(
+    "dados_brutos/sao_silvestre_historico.csv"
 )
 
-df_m = pd.read_csv(
-    "dados_brutos/sao_silvestre_2025_masculino.csv"
+complemento = pd.read_csv(
+    "dados_brutos/sao_silvestre_2022_2023.csv"
 )
 
-df_f["genero"] = "F"
-df_m["genero"] = "M"
-
-
-df = pd.concat(
-    [df_f, df_m],
+df_completo = pd.concat(
+    [historico, complemento],
     ignore_index=True
 )
 
-print(df["genero"].value_counts())
-print()
-print("Total geral:", len(df))
-print("Dimensão:", df.shape)
+print(df_completo.shape)
 
-df.to_csv(
-    "dados_tratados/sao_silvestre_2025.csv",
+print(
+    df_completo["ano"]
+    .value_counts()
+    .sort_index()
+)
+
+df_completo.to_csv(
+    "dados_brutos/sao_silvestre_historico_completo.csv",
     index=False,
     encoding="utf-8-sig"
 )
-
-print("\nBase consolidada salva.")

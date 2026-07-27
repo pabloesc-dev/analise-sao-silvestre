@@ -1,0 +1,196 @@
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+import time as tm
+
+URL = "https://openresults.run/ajax_resultados_evento.cfm"
+
+Eventos={
+    
+    2022: 38,
+    2023: 2994,
+}
+
+def coletar_resultados(ano, id_evento, genero):
+
+    dados_finais = []
+
+    offset = 0
+    limit = 100
+
+    while True:
+
+        params = {
+            "id_evento": id_evento,
+            "modalidade": "15K",
+            "genero": genero,
+            "categoria": "",
+            "equipe": "",
+            "termo": "",
+            "show_modalidade": 0,
+            "show_categoria": 0,
+            "offset": offset,
+            "limit": limit,
+            "busca": ""
+        }
+
+        try:
+
+            resposta = requests.get(
+                URL,
+                params=params,
+                timeout=30
+            )
+
+
+            if resposta.status_code != 200:
+                print(f"Erro HTTP: {resposta.status_code}")
+                break
+
+
+            dados = resposta.json()
+
+        except requests.exceptions.RequestException as erro:
+
+            print("Erro de conexão:", erro)
+            print("Tentando novamente...")
+            tm.sleep(10)
+            continue
+
+        soup = BeautifulSoup(
+            dados["html"],
+            "html.parser"
+        )
+
+        linhas = soup.find_all("tr")
+
+
+        if len(linhas) == 0:
+            break
+
+        for linha in linhas:
+
+            colunas = linha.find_all("td")
+
+
+            if len(colunas) >= 7:
+
+
+                atleta = {
+
+                    "ano": ano,
+
+                    "colocacao": int(
+                        colunas[0].get_text(strip=True)
+                    ),
+
+                    "categoria": colunas[1].get_text(strip=True),
+
+                    "numero_peito": int(
+                        colunas[2].get_text(strip=True)
+                    ),
+
+                    "nome": colunas[3].get_text(strip=True),
+
+                    "equipe": colunas[4].get_text(strip=True),
+
+                    "pace": colunas[5].get_text(strip=True),
+
+                    "tempo": colunas[6].get_text(strip=True),
+
+                    "genero": genero
+
+                }
+
+                dados_finais.append(atleta)
+
+                # MOSTRAR ATLETA NO TERMINAL
+                print(
+                    f"{atleta['ano']} | "
+                    f"{atleta['genero']} | "
+                    f"{atleta['colocacao']}º | "
+                    f"{atleta['nome']} | "
+                    f"Tempo: {atleta['tempo']}"
+                )
+
+        offset += limit
+
+        tm.sleep(0.5)
+
+    df = pd.DataFrame(dados_finais)
+
+    print("\nResumo")
+    print(
+        f"Ano: {ano} | "
+        f"Gênero: {genero} | "
+        f"Atletas coletados: {len(df)}"
+    )
+    return df
+
+# EXECUÇÃO PRINCIPAL
+
+todos_os_dados = []
+
+
+for ano, id_evento in Eventos.items():
+
+    print("\n==============================")
+    print(f"COLETANDO {ano} MASCULINO")
+    print("==============================")
+
+
+    df_m = coletar_resultados(
+        ano,
+        id_evento,
+        "M"
+    )
+
+    todos_os_dados.append(df_m)
+
+    print("\n==============================")
+    print(f"COLETANDO {ano} FEMININO")
+    print("==============================")
+
+    df_f = coletar_resultados(
+        ano,
+        id_evento,
+        "F"
+    )
+
+    todos_os_dados.append(df_f)
+
+# juntar tudo
+
+df_final = pd.concat(
+    todos_os_dados,
+    ignore_index=True
+)
+
+print("\n==============================")
+print("RESULTADO FINAL")
+print("==============================")
+
+print(df_final.head())
+
+print("\nAtletas por gênero:")
+print(df_final["genero"].value_counts())
+
+
+print("\nAtletas por ano:")
+print(
+    df_final["ano"]
+    .value_counts()
+    .sort_index()
+)
+
+print("\nTotal de registros:")
+print(df_final.shape)
+
+# salvar
+
+df_final.to_csv(
+    "dados_brutos/sao_silvestre_2022_2023.csv",
+    index=False,
+    encoding="utf-8-sig"
+)
+print("\nArquivo salvo com sucesso!")

@@ -1,0 +1,6 @@
+import shutil
+
+shutil.copy(
+    "dados_brutos/sao_silvestre_historico.csv",
+    "dados_brutos/backup_sao_silvestre_210414.csv"
+)

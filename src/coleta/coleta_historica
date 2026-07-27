@@ -1,36 +1,35 @@
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-import time
+import time as tm
 
 URL = "https://openresults.run/ajax_resultados_evento.cfm"
 
-
-EVENTOS = {
-    #2016: 37618,
-    #2017: 37619,
-    #2018: 37620,
-    #2019: 37621,
+Eventos={
+    2016: 37618,
+    2017: 37619,
+    2018: 37620,
+    2019: 37621,
     2021: 8655,
     2022: 38,
-    #2023: 2994,
-    #2024: 13958,
-    #2025: 28675
+    2023: 2994,
+    2024: 13958,
+    2025: 28675
 }
 
-
 def coletar_resultados(ano, id_evento, genero):
-    
+
     dados_finais = []
 
     offset = 0
     limit = 100
 
+
     while True:
 
         params = {
             "id_evento": id_evento,
-            "modalidade": "15k",
+            "modalidade": "15K",
             "genero": genero,
             "categoria": "",
             "equipe": "",
@@ -41,102 +40,158 @@ def coletar_resultados(ano, id_evento, genero):
             "limit": limit,
             "busca": ""
         }
-
         try:
-
             resposta = requests.get(
                 URL,
                 params=params,
                 timeout=30
             )
-
             if resposta.status_code != 200:
-                print(f"Erro HTTP {resposta.status_code}")
+                print(f"Erro HTTP: {resposta.status_code}")
                 break
-            print(f"\nAno: {ano}")
-            print("Status:", resposta.status_code)
-            print("URL:", resposta.url)  
             dados = resposta.json()
 
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as erro:
 
-            print(f"Erro: {e}")
-            print("Tentando novamente em 10 segundos...")
-
-            time.sleep(10)
+            print("Erro de conexão:", erro)
+            print("Tentando novamente...")
+            tm.sleep(10)
             continue
 
-        soup = BeautifulSoup(dados["html"], "html.parser")
+        soup = BeautifulSoup(
+            dados["html"],
+            "html.parser"
+        )
 
         linhas = soup.find_all("tr")
 
         if len(linhas) == 0:
             break
 
+
         for linha in linhas:
 
             colunas = linha.find_all("td")
 
+
             if len(colunas) >= 7:
 
-                dados_finais.append({
+
+                atleta = {
 
                     "ano": ano,
-                    "colocacao": colunas[0].get_text(strip=True),
+
+                    "colocacao": int(
+                        colunas[0].get_text(strip=True)
+                    ),
+
                     "categoria": colunas[1].get_text(strip=True),
-                    "numero_peito": colunas[2].get_text(strip=True),
+
+                    "numero_peito": int(
+                        colunas[2].get_text(strip=True)
+                    ),
+
                     "nome": colunas[3].get_text(strip=True),
+
                     "equipe": colunas[4].get_text(strip=True),
+
                     "pace": colunas[5].get_text(strip=True),
+
                     "tempo": colunas[6].get_text(strip=True),
+
                     "genero": genero
 
-                })
-
-        print(
-            f"{ano} | {genero} | Offset {offset} | Registros: {len(dados_finais)}"
-        )
+                }
+                dados_finais.append(atleta)
+                # MOSTRAR ATLETA NO TERMINAL
+                print(
+                    f"{atleta['ano']} | "
+                    f"{atleta['genero']} | "
+                    f"{atleta['colocacao']}º | "
+                    f"{atleta['nome']} | "
+                    f"Tempo: {atleta['tempo']}"
+                )
 
         offset += limit
 
-        time.sleep(0.5)
+        tm.sleep(0.5)
 
-    return pd.DataFrame(dados_finais)
+    df = pd.DataFrame(dados_finais)
 
+
+    print("\nResumo")
+    print(
+        f"Ano: {ano} | "
+        f"Gênero: {genero} | "
+        f"Atletas coletados: {len(df)}"
+    )
+    return df
 #main
 
 todos_os_dados = []
 
+
 for ano, id_evento in EVENTOS.items():
 
-    print(f"\n===== Coletando {ano} Masculino =====")
 
-    df_m = coletar_resultados(ano, id_evento, "M")
+    print("\n==============================")
+    print(f"COLETANDO {ano} MASCULINO")
+    print("==============================")
 
+
+    df_m = coletar_resultados(
+        ano,
+        id_evento,
+        "M"
+    )
     todos_os_dados.append(df_m)
 
-    print(f"\n===== Coletando {ano} Feminino =====")
+    print("\n==============================")
+    print(f"COLETANDO {ano} FEMININO")
+    print("==============================")
 
-    df_f = coletar_resultados(ano, id_evento, "F")
 
+    df_f = coletar_resultados(
+        ano,
+        id_evento,
+        "F"
+    )
     todos_os_dados.append(df_f)
 
+# juntar tudo
 
-df_final = pd.concat(todos_os_dados, ignore_index=True)
+df_final = pd.concat(
+    todos_os_dados,
+    ignore_index=True
+)
 
-print("\nResumo Final")
+print("\n==============================")
+print("RESULTADO FINAL")
+print("==============================")
+
+
+print(df_final.head())
+
+
+print("\nAtletas por gênero:")
 print(df_final["genero"].value_counts())
 
-print(df_final["ano"].value_counts().sort_index())
 
+print("\nAtletas por ano:")
+print(
+    df_final["ano"]
+    .value_counts()
+    .sort_index()
+)
+
+print("\nTotal de registros:")
 print(df_final.shape)
 
-#salvar csv
+# salvar
+
 df_final.to_csv(
-    "dados_brutos/sao_silvestre_historico.csv",
+    "dados_brutos/sao_silvestre_coleta_nova.csv",
     index=False,
     encoding="utf-8-sig"
 )
-print(df.shape)
-print(df["ano"].value_counts())
 print("\nArquivo salvo com sucesso!")

@@ -6,10 +6,21 @@ import time
 URL = "https://openresults.run/ajax_resultados_evento.cfm"
 
 EVENTOS = {
-    2022: 38
-    # Para testar 2023 depois, troque por:
-    # 2023: 2994
+    2022: 38,
+    2023: 2994
 }
+
+COLUNAS = [
+    "ano",
+    "colocacao",
+    "categoria",
+    "numero_peito",
+    "nome",
+    "equipe",
+    "pace",
+    "tempo",
+    "genero"
+]
 
 
 def coletar_resultados(ano, id_evento, genero):
@@ -23,7 +34,7 @@ def coletar_resultados(ano, id_evento, genero):
 
         params = {
             "id_evento": id_evento,
-            "modalidade": "15k",
+            "modalidade": "15K",
             "genero": genero,
             "categoria": "",
             "equipe": "",
@@ -54,16 +65,19 @@ def coletar_resultados(ano, id_evento, genero):
             print("\nChaves retornadas pela API:")
             print(dados.keys())
 
+            print("\nrecordsTotal:", dados.get("recordsTotal"))
+            print("recordsFiltered:", dados.get("recordsFiltered"))
+            print("hasMore:", dados.get("hasMore"))
+
             print("\nPrimeiros 500 caracteres do HTML:")
-            print(dados["html"][:500])
+            print(dados.get("html", "")[:500])
 
         except Exception as e:
-
             print("ERRO:")
             print(e)
             break
 
-        soup = BeautifulSoup(dados["html"], "html.parser")
+        soup = BeautifulSoup(dados.get("html", ""), "html.parser")
 
         linhas = soup.find_all("tr")
 
@@ -73,11 +87,15 @@ def coletar_resultados(ano, id_evento, genero):
             print("Nenhum resultado encontrado.")
             break
 
+        registros_pagina = 0
+
         for linha in linhas:
 
             colunas = linha.find_all("td")
 
             if len(colunas) >= 7:
+
+                registros_pagina += 1
 
                 dados_finais.append({
                     "ano": ano,
@@ -91,13 +109,17 @@ def coletar_resultados(ano, id_evento, genero):
                     "genero": genero
                 })
 
+        print(f"Registros nesta página: {registros_pagina}")
         print(f"Registros acumulados: {len(dados_finais)}")
+
+        if registros_pagina == 0:
+            break
 
         offset += limit
 
         time.sleep(0.5)
 
-    return pd.DataFrame(dados_finais)
+    return pd.DataFrame(dados_finais, columns=COLUNAS)
 
 
 # ==========================
@@ -127,6 +149,18 @@ for ano, id_evento in EVENTOS.items():
 
 df_final = pd.concat(todos_os_dados, ignore_index=True)
 
-print("\nResumo Final")
-print(df_final["ano"].value_counts())
+print("\n==============================")
+print("RESUMO FINAL")
+print("==============================")
+
+print("Colunas:")
+print(df_final.columns.tolist())
+
+print("\nShape:")
 print(df_final.shape)
+
+if not df_final.empty:
+    print("\nQuantidade por ano:")
+    print(df_final["ano"].value_counts().sort_index())
+else:
+    print("\nNenhum dado foi coletado.")
