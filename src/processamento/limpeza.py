@@ -12,7 +12,7 @@ def pace_para_segundos(p):
     m, s = map(int, p.split(":"))
     return m * 60 + s
 
-# Read base
+
 df = pd.read_csv(
     "dados_brutos/sao_silvestre_historico_completo.csv"
 )
@@ -27,7 +27,7 @@ df["pace_segundos"] = (
     df["pace"]
     .apply(pace_para_segundos)
 )
-# Validação
+
 print(df.info())
 
 print("\nValores nulos:")
@@ -37,7 +37,7 @@ print("\nDuplicados:")
 print(df.duplicated().sum())
 
 df["equipe"] = df["equipe"].fillna("Sem equipe")
-# Dados tratados
+
 
 df.to_csv(
     "dados_tratados/sao_silvestre_historico_tratado.csv",

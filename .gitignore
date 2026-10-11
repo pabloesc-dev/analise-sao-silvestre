@@ -1,0 +1,14 @@
+gitignore
+# Ambiente virtual
+.venv/
+
+# Credenciais
+.env
+.env.*
+
+# Cache Python
+__pycache__/
+*.py[cod]
+
+# Bachups
+*.bk
