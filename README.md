@@ -15,7 +15,7 @@ O projeto envolve a coleta, o tratamento e a organização dos resultados, utili
 
 ## 🌐 Fonte dos dados
 
-Os dados são obtidos a partir do site [OpenResults — Corrida Internacional de São Silvestre 2019](https://openresults.run/evento/2019-95-corrida-internacional-de-sao-silvestre#resultado).
+Os dados são obtidos a partir do site [OpenResults — Corrida Internacional de São Silvestre ](https://openresults.run/evento/2019-95-corrida-internacional-de-sao-silvestre#resultado).
 
 A coleta abrange nove anos de resultados, utilizando páginas correspondentes às diferentes edições da competição.
 
